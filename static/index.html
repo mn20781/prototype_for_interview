@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel Mini</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Montserrat:wght@300;400;500;600;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --serif: "Cormorant", Didot, "Bodoni MT", serif;
+      --sans: "Montserrat", "Futura", system-ui, sans-serif;
+      --bg-base: #f4f3f0;
+      --bg-card: #ffffff;
+      --text-main: #111111;
+      --text-muted: rgba(17,17,17,0.6);
+      --text-ghost: rgba(17,17,17,0.3);
+      --border: rgba(0,0,0,0.1);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: var(--sans);
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .trace-sidebar {
+      width: 320px;
+      border-right: 1px solid var(--border);
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 10px rgba(0,0,0,0.02);
+      flex-shrink: 0;
+    }
+
+    @media (min-width: 1024px) {
+      .trace-sidebar { width: 384px; }
+    }
+
+    .trace-header {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      background: #f8f8f8;
+    }
+
+    .trace-logs-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      background: #fafafa;
+    }
+
+    .log-item {
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      font-size: 0.75rem;
+      border: 1px solid var(--border);
+      font-family: monospace;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      animation: slideInLeft 0.3s ease-out forwards;
+    }
+
+    .log-item.success { background: #ffffff; border-color: rgba(0,0,0,0.1); color: #334155; }
+    .log-item.warning { background: #fffbeb; border-color: #fde68a; color: #78350f; }
+    .log-item.error { background: #fef2f2; border-color: #fecaca; color: #7f1d1d; }
+
+    .log-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid currentColor;
+      padding-bottom: 0.25rem;
+      opacity: 0.6;
+      font-weight: bold;
+    }
+
+    .main-workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: #f4f3f0;
+      padding: 1rem;
+      overflow: hidden;
+    }
+
+    @media (min-width: 768px) {
+      .main-workspace { padding: 2rem; }
+    }
+
+    .editorial-card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.08), 0 0 0 1px var(--border);
+      overflow: hidden;
+      height: 100%;
+      width: 100%;
+      max-width: 56rem;
+      margin: 0 auto;
+    }
+
+    .card-header {
+      padding: 1.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .card-title {
+      font-family: var(--serif);
+      font-size: 2rem;
+      font-style: italic;
+      color: var(--text-main);
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      scroll-behavior: smooth;
+    }
+
+    .chat-entry {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      margin-bottom: 2rem;
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+
+    .chat-entry.user .chat-meta {
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      color: var(--text-ghost);
+      margin-bottom: 0.5rem;
+      text-align: right;
+    }
+
+    .chat-entry.user .chat-content {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-main);
+      background: #f8f8f8;
+      padding: 1rem 1.5rem;
+      border-radius: 12px 12px 0 12px;
+      align-self: flex-end;
+      max-width: 85%;
+      white-space: pre-wrap;
+    }
+
+    .chat-entry.ai .chat-meta {
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chat-entry.ai .chat-content {
+      font-family: var(--serif);
+      font-size: 1.3rem;
+      line-height: 1.5;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      font-weight: 400;
+      align-self: flex-start;
+      max-width: 90%;
+    }
+
+    .structured-block {
+      background: #ffffff;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      width: 100%;
+    }
+
+    .structured-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: bold;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 1rem;
+    }
+
+    .structured-header.tasks { color: #4f46e5; }
+    .structured-header.summary { color: #059669; }
+
+    .task-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: #f8fafc;
+      border-radius: 0.5rem;
+      border: 1px solid #f1f5f9;
+      margin-bottom: 0.75rem;
+    }
+
+    .task-item:last-child { margin-bottom: 0; }
+    .task-desc { font-size: 0.875rem; font-weight: 500; color: #1e293b; font-family: var(--sans); }
+    .task-deadline {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.625rem;
+      background: #e0e7ff;
+      color: #4338ca;
+      border: 1px solid #c7d2fe;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.375rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .warning-block {
+      margin-top: 1.25rem;
+      padding: 1rem;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 0.5rem;
+      display: flex;
+      gap: 0.75rem;
+      color: #78350f;
+    }
+
+    .warning-title {
+      font-weight: bold;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.25rem;
+    }
+
+    .warning-desc { font-size: 0.875rem; }
+
+    .input-zone {
+      padding: 1.5rem 2rem;
+      background: #fff;
+      border-top: 1px solid var(--border);
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .quick-actions::-webkit-scrollbar { display: none; }
+
+    .action-chip {
+      flex-shrink: 0;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 0.4rem 1rem;
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .action-chip:hover { border-color: var(--text-main); background: var(--text-main); color: #fff; }
+
+    .pill-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #f8f8f8;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 0.5rem 0.5rem 0.5rem 1rem;
+      transition: all 0.3s;
+    }
+
+    .pill-input-wrapper:focus-within {
+      border-color: var(--text-main);
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .utility-btn {
+      background: transparent;
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .utility-btn:hover { background: #e5e5e5; color: var(--text-main); }
+
+    .pill-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 0.95rem;
+      color: var(--text-main);
+      padding: 0;
+    }
+
+    .pill-input::placeholder {
+      color: var(--text-ghost);
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 1.1rem;
+    }
+
+    .send-pill {
+      background: var(--text-main);
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    .send-pill:hover:not(:disabled) { transform: scale(1.05); }
+    .send-pill:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #staged-file-container { display: none; }
+
+    .staged-file-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: var(--text-main);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 0.3rem 0.6rem;
+      border-radius: 99px;
+      white-space: nowrap;
+      max-width: 180px;
+      flex-shrink: 0;
+    }
+
+    .staged-file-chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+    }
+
+    .staged-file-chip button {
+      background: transparent;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      opacity: 0.7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin-left: 2px;
+    }
+
+    .staged-file-chip button:hover { opacity: 1; }
+
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .typing-indicator { display: flex; gap: 4px; padding: 0.5rem 0; align-items: center; width: fit-content; }
+    .typing-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--text-main);
+      animation: pulse 1.5s infinite ease-in-out;
+      opacity: 0.3;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.8); opacity: 0.3; }
+      50% { transform: scale(1.2); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="trace-sidebar">
+    <div class="trace-header">
+      <h2 style="font-size: 0.75rem; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="terminal" style="width: 14px; height: 14px;"></i> Trace Output
+      </h2>
+    </div>
+    <div id="trace-logs" class="trace-logs-container">
+      <div id="awaiting-telemetry" style="text-align: center; color: #94a3b8; font-size: 0.875rem; margin-top: 2.5rem; font-family: monospace;">
+        <i data-lucide="activity" style="width: 20px; height: 20px; margin: 0 auto 0.5rem auto; opacity: 0.3; display: block;"></i>
+        Awaiting telemetry...
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-workspace">
+    <div class="editorial-card">
+      <header class="card-header">
+        <div class="card-title">
+          <i data-lucide="sparkles" style="color: #4f46e5; width: 24px; height: 24px;"></i> Sentinel.
+        </div>
+        <div style="font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8;">
+          Agent Session
+        </div>
+      </header>
+
+      <div id="chat-feed" class="card-feed">
+        <div class="chat-entry ai">
+          <div class="chat-meta">
+            <i data-lucide="sparkles" style="color: #4f46e5; width: 12px; height: 12px;"></i> SENTINEL ENGINE
+          </div>
+          <div class="chat-content">Sentinel Mini is active. Paste an email, research note, or attach a document, and ask me to extract tasks or summarize it.</div>
+        </div>
+      </div>
+
+      <div class="input-zone">
+        <div class="quick-actions">
+          <button class="action-chip" onclick="handleQuickAction('tasks')">Extract Tasks</button>
+          <button class="action-chip" onclick="handleQuickAction('summary')">Summarize Note</button>
+        </div>
+
+        <div class="pill-input-wrapper">
+          <input type="file" id="file-input" style="display: none;" accept=".txt,.md,.csv,.json,text/*">
+
+          <button class="utility-btn" onclick="document.getElementById('file-input').click()" title="Attach Document">
+            <i data-lucide="paperclip" style="width: 18px; height: 18px;"></i>
+          </button>
+
+          <div id="staged-file-container">
+            <div class="staged-file-chip">
+              <i data-lucide="paperclip" style="width: 10px; height: 10px;"></i>
+              <span id="staged-filename">filename.txt</span>
+              <button onclick="clearStagedFile()">
+                <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <input
+            type="text"
+            id="prompt-input"
+            class="pill-input"
+            placeholder="Type a request, paste an email, or attach a file..."
+            autocomplete="off"
+          >
+
+          <button id="send-button" class="send-pill" onclick="handleSend()">
+            <i data-lucide="send" style="width: 16px; height: 16px;"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    lucide.createIcons();
+
+    const appState = {
+      isProcessing: false,
+      stagedFile: null,
+    };
+
+    const DOM = {
+      chatFeed: document.getElementById("chat-feed"),
+      traceLogs: document.getElementById("trace-logs"),
+      promptInput: document.getElementById("prompt-input"),
+      fileInput: document.getElementById("file-input"),
+      stagedContainer: document.getElementById("staged-file-container"),
+      stagedFilename: document.getElementById("staged-filename"),
+      sendButton: document.getElementById("send-button"),
+      awaitingTelemetry: document.getElementById("awaiting-telemetry"),
+    };
+
+    function makeClientTraceId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+      return `client_${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    function sleep(ms) {
+      return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+
+    function scrollToBottom() {
+      DOM.chatFeed.scrollTop = DOM.chatFeed.scrollHeight;
+    }
+
+    function toggleInputState() {
+      const disable = appState.isProcessing || (!DOM.promptInput.value.trim() && !appState.stagedFile);
+      DOM.sendButton.disabled = disable;
+
+      if (appState.stagedFile) {
+        DOM.stagedContainer.style.display = "block";
+        DOM.stagedFilename.textContent = appState.stagedFile.name;
+        DOM.promptInput.placeholder = "Add a prompt for this file...";
+      } else {
+        DOM.stagedContainer.style.display = "none";
+        DOM.promptInput.placeholder = "Type a request, paste an email, or attach a file...";
+      }
+    }
+
+    function clearStagedFile() {
+      appState.stagedFile = null;
+      DOM.fileInput.value = "";
+      toggleInputState();
+    }
+
+    DOM.promptInput.addEventListener("input", toggleInputState);
+    DOM.promptInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        handleSend();
+      }
+    });
+
+    function appendLog(stage, data, status) {
+      if (DOM.awaitingTelemetry) {
+        DOM.awaitingTelemetry.style.display = "none";
+      }
+
+      const logHtml = `
+        <div class="log-item ${status}">
+          <div class="log-item-header">
+            <span style="display: flex; align-items: center; gap: 4px;">
+              <i data-lucide="chevron-right" style="width: 12px; height: 12px;"></i> ${escapeHTML(stage)}
+            </span>
+          </div>
+          <pre style="white-space: pre-wrap; word-break: break-all; margin: 0;">${escapeHTML(JSON.stringify(data, null, 2))}</pre>
+        </div>
+      `;
+      DOM.traceLogs.insertAdjacentHTML("afterbegin", logHtml);
+      lucide.createIcons();
+    }
+
+    function appendBackendTrace(traceEntries) {
+      traceEntries.forEach((entry) => {
+        appendLog(entry.stage, {
+          request_id: entry.request_id,
+          trace_id: entry.trace_id,
+          timestamp: entry.timestamp,
+          ...entry.payload
+        }, entry.status);
+      });
+    }
+
+    function appendUserMessage(content) {
+      const html = `
+        <div class="chat-entry user">
+          <div class="chat-meta">USER</div>
+          <div class="chat-content">${escapeHTML(content)}</div>
+        </div>
+      `;
+      DOM.chatFeed.insertAdjacentHTML("beforeend", html);
+      scrollToBottom();
+    }
+
+    function appendPlainAIMessage(content) {
+      const html = `
+        <div class="chat-entry ai">
+          <div class="chat-meta">
+            <i data-lucide="sparkles" style="color: #4f46e5; width: 12px; height: 12px;"></i> SENTINEL ENGINE
+          </div>
+          <div class="chat-content">${escapeHTML(content)}</div>
+        </div>
+      `;
+      DOM.chatFeed.insertAdjacentHTML("beforeend", html);
+      lucide.createIcons();
+      scrollToBottom();
+    }
+
+    function showTypingIndicator() {
+      const html = `
+        <div id="typing-indicator" class="chat-entry ai">
+          <div class="chat-meta">
+            <i data-lucide="sparkles" style="color: #4f46e5; width: 12px; height: 12px;"></i> PROCESSING INTENT
+          </div>
+          <div class="chat-content" style="background: transparent; padding: 0;">
+            <div class="typing-indicator">
+              <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+            </div>
+          </div>
+        </div>
+      `;
+      DOM.chatFeed.insertAdjacentHTML("beforeend", html);
+      lucide.createIcons();
+      scrollToBottom();
+    }
+
+    function removeTypingIndicator() {
+      const el = document.getElementById("typing-indicator");
+      if (el) {
+        el.remove();
+      }
+    }
+
+    function appendAIMessage(result) {
+      if (result.intent === "needs_clarification") {
+        appendPlainAIMessage(result.confirmation_gate?.message || result.message);
+        return;
+      }
+      if (result.intent === "unsupported") {
+        appendPlainAIMessage(result.confirmation_gate?.message || result.message);
+        return;
+      }
+
+      let contentHtml = "";
+      if (result.intent === "create_tasks") {
+        const tasksHtml = (result.tasks || []).map((task) => `
+          <div class="task-item">
+            <i data-lucide="check-circle-2" style="color: #cbd5e1; width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px;"></i>
+            <div>
+              <div class="task-desc">${escapeHTML(task.description)}</div>
+              ${task.deadline ? `<span class="task-deadline">Due: ${escapeHTML(task.deadline)}</span>` : ""}
+            </div>
+          </div>
+        `).join("");
+
+        const warningHtml = result.confirmation_gate?.required ? `
+          <div class="warning-block">
+            <i data-lucide="shield-alert" style="width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px;"></i>
+            <div>
+              <div class="warning-title">Confirmation Required</div>
+              <div class="warning-desc">${escapeHTML(result.confirmation_gate.message)}</div>
+            </div>
+          </div>
+        ` : "";
+
+        contentHtml = `
+          <div class="chat-content" style="background: transparent; padding: 0; max-width: 100%;">
+            <div class="structured-block">
+              <div class="structured-header tasks">
+                <i data-lucide="clipboard-list" style="width: 16px; height: 16px;"></i> Extracted Action Items
+              </div>
+              <div>${tasksHtml}</div>
+              ${warningHtml}
+            </div>
+          </div>
+        `;
+      } else if (result.intent === "summarize") {
+        contentHtml = `
+          <div class="chat-content" style="background: transparent; padding: 0; max-width: 100%;">
+            <div class="structured-block">
+              <div class="structured-header summary">
+                <i data-lucide="message-square" style="width: 16px; height: 16px;"></i> Document Summary
+              </div>
+              <p style="font-family: var(--serif); font-size: 1.25rem; line-height: 1.6; color: #1e293b; margin: 0;">
+                ${escapeHTML(result.summary || result.message)}
+              </p>
+            </div>
+          </div>
+        `;
+      }
+
+      const html = `
+        <div class="chat-entry ai">
+          <div class="chat-meta">
+            <i data-lucide="sparkles" style="color: #4f46e5; width: 12px; height: 12px;"></i> SENTINEL ENGINE
+          </div>
+          ${contentHtml}
+        </div>
+      `;
+
+      DOM.chatFeed.insertAdjacentHTML("beforeend", html);
+      lucide.createIcons();
+      scrollToBottom();
+    }
+
+    async function sendWithRetry(payload, clientTraceId) {
+      let lastError = null;
+
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        appendLog("client_request_dispatch", {
+          client_trace_id: clientTraceId,
+          attempt,
+          source_name: payload.source_name || null,
+          input_char_count: payload.text.length,
+        }, attempt === 1 ? "success" : "warning");
+
+        try {
+          const response = await fetch("/api/assist/process", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            const error = new Error(`HTTP ${response.status}`);
+            error.status = response.status;
+            throw error;
+          }
+
+          const result = await response.json();
+          appendBackendTrace(result.trace || []);
+          return result;
+        } catch (error) {
+          lastError = error;
+          const retriable = !error.status || error.status >= 500;
+          appendLog("client_request_failure", {
+            client_trace_id: clientTraceId,
+            attempt,
+            error: String(error.message || error),
+            retriable,
+          }, attempt === 1 && retriable ? "warning" : "error");
+
+          if (attempt === 1 && retriable) {
+            appendLog("client_retry_scheduled", {
+              client_trace_id: clientTraceId,
+              retry_in_ms: 350,
+            }, "warning");
+            await sleep(350);
+            continue;
+          }
+
+          break;
+        }
+      }
+
+      throw lastError || new Error("Request failed");
+    }
+
+    async function handleSend(overrideText = null) {
+      const textPrompt = overrideText || DOM.promptInput.value;
+      if ((!textPrompt.trim() && !appState.stagedFile) || appState.isProcessing) {
+        return;
+      }
+
+      const fullPayload = appState.stagedFile
+        ? (textPrompt.trim()
+          ? `${appState.stagedFile.content}\n\nUser request: ${textPrompt}`
+          : appState.stagedFile.content)
+        : textPrompt;
+      const displayBubble = appState.stagedFile
+        ? `[Attached: ${appState.stagedFile.name}] ${textPrompt || "Analyze this note"}`
+        : textPrompt;
+      const clientTraceId = makeClientTraceId();
+
+      appendUserMessage(displayBubble);
+
+      DOM.promptInput.value = "";
+      const sourceName = appState.stagedFile ? appState.stagedFile.name : null;
+      clearStagedFile();
+      appState.isProcessing = true;
+      toggleInputState();
+      showTypingIndicator();
+
+      try {
+        const result = await sendWithRetry({
+          text: fullPayload,
+          source_name: sourceName,
+        }, clientTraceId);
+        appendAIMessage(result);
+      } catch (error) {
+        appendPlainAIMessage("The endpoint failed twice in a row. Please retry with a shorter note or try again in a moment.");
+      } finally {
+        removeTypingIndicator();
+        appState.isProcessing = false;
+        toggleInputState();
+      }
+    }
+
+    function processFile(file) {
+      if (!file) {
+        return;
+      }
+
+      if (!file.type.startsWith("text/") && !file.name.match(/\.(txt|md|csv|json)$/i)) {
+        appendPlainAIMessage(`Error: Unable to process "${file.name}". Sentinel Mini currently only supports plain text formats.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        appState.stagedFile = {
+          name: file.name,
+          content: String(event.target.result || ""),
+        };
+
+        appendLog("file_staged", {
+          filename: file.name,
+          size_bytes: file.size,
+          action: "staged_in_pill",
+        }, "success");
+        toggleInputState();
+      };
+      reader.readAsText(file);
+    }
+
+    DOM.fileInput.addEventListener("change", (event) => {
+      processFile(event.target.files[0]);
+      event.target.value = "";
+    });
+
+    DOM.promptInput.addEventListener("paste", (event) => {
+      if (event.clipboardData.files && event.clipboardData.files.length > 0) {
+        event.preventDefault();
+        processFile(event.clipboardData.files[0]);
+      }
+    });
+
+    function handleQuickAction(type) {
+      if (type === "tasks") {
+        handleSend("Find the key points in this research note and turn them into 3 actionable tasks with deadlines if mentioned. We need to finalize the ad copy by Friday. John should schedule the vendor call on 2026-05-20. Also draft the follow-up email for the launch team.");
+      } else {
+        handleSend("Please summarize this note: The architecture review concluded that the retrieval service is stable enough for a pilot launch, but the indexing job still needs tighter observability before it should be exposed to customers.");
+      }
+    }
+
+    function escapeHTML(str) {
+      const div = document.createElement("div");
+      div.innerText = str;
+      return div.innerHTML;
+    }
+
+    toggleInputState();
+  </script>
+</body>
+</html>
